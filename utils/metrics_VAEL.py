@@ -73,7 +73,7 @@ def discriminative_ability(model, test_set):
                 q_prob, _ = model.problog_inference(model.digits_probs, query=query)
                 query_prob[:, query] = q_prob[0]
 
-            pred = torch.argmax(query_prob, dim=1)
+            pred = torch.argmax(query_prob, dim=1).to(model.device)
             class_loss.append(acc(pred, labels))
 
             if i == len(test_set):
