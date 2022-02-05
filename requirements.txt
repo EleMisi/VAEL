@@ -1,0 +1,12 @@
+Cython==0.29.24
+numpy==1.19.5
+pandas==1.1.5
+Path==16.2.0
+Pillow==7.1.2
+problog==2.2.2
+PySDD==0.2.10
+scikit-learn==0.22.2
+scikit-image==0.16.2
+scipy==1.4.1
+torch==1.9.0
+torchvision==0.10.0
