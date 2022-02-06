@@ -70,7 +70,6 @@ def load_data(n_digits, sequence_len, batch_size, data_path, data_folder, task='
                            train=True, sup=False, sup_digits=None, data_path=data_path)
         val_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=batch_size['val'], idxs=val_idxs, train=True,
                          sup=False, sup_digits=None, data_path=data_path)
-
         test_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=batch_size['test'], idxs=test_idxs,
                           train=False, sup=False, sup_digits=None, data_path=data_path)
 
@@ -217,7 +216,7 @@ def build_worlds_queries_matrix(sequence_len, n_digits):
     return w_q
 
 
-def run_vael(param_grid, exp_class, exp_folder, data_folder, data_file, n_digits, batch_size, task='base', tag='base', device='cpu',
+def run_vael(param_grid, exp_class, exp_folder, data_folder, data_file, n_digits, batch_size, dataset_dimension, task='base', tag='base', device='cpu',
              time_limit=500, early_stopping_info=None, classes=None, time_delta=350):
     print("\nDevice:", device)
     print()
@@ -229,7 +228,7 @@ def run_vael(param_grid, exp_class, exp_folder, data_folder, data_file, n_digits
     # Load data
     data_path = os.path.join(data_folder, data_file)
     # Check whether dataset exists, if not build it
-    check_dataset(n_digits, data_folder, data_file)
+    check_dataset(n_digits, data_folder, data_file, dataset_dimension)
     train_set, val_set, test_set = load_data(n_digits=n_digits, sequence_len=sequence_len, batch_size=batch_size,
                                              data_path=data_path, data_folder=data_folder, task=task, tag=tag,
                                              classes=classes)

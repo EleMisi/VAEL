@@ -162,7 +162,7 @@ def create_dataset(n_digit=2, sequence_len=2, samples_x_world=100, train=True, d
     return np.array(imgs).astype('int32'), np.array(labels), label2idx
 
 
-def check_dataset(n_digits, data_folder, data_file):
+def check_dataset(n_digits, data_folder, data_file, dataset_dim):
     """Checks whether the dataset exists, if not creates it."""
     Path(data_folder).mkdir(parents=True, exist_ok=True)
     data_path = os.path.join(data_folder, data_file)
@@ -170,25 +170,24 @@ def check_dataset(n_digits, data_folder, data_file):
         load(data_path)
     except:
         print("No dataset found.")
-        # Define dataset dimension
-        dataset_dim = int(input(
-            "Please specify the desired dataset dimension (split: 70% training set, 10% validation set, 10% test set):\n"))
-        dataset_dim = [dataset_dim * p for p in [0.7, 0.2, 0.1]]
+        # Define dataset dimension so to have teh same number of worlds
         n_worlds = n_digits * n_digits
-        samples_x_world = [int(d /n_worlds) for d in dataset_dim]
-        dataset_dim = [ s * n_worlds for s in samples_x_world]
-
-        print(f"Dataset dimensions: \n\t{dataset_dim[0]} train ({samples_x_world[0]} samples per world), \n\t{dataset_dim[1]} validation ({samples_x_world[1]} samples per world), \n\t{dataset_dim[2]} test ({samples_x_world[2]} samples per world)")
+        samples_x_world = {k: int(d /n_worlds) for k,d in dataset_dim.items()}
+        dataset_dim = {k: s * n_worlds for k,s in samples_x_world.items()}
 
         train_imgs, train_labels, train_indexes = create_dataset(n_digit=n_digits, sequence_len=2,
-                                                                 samples_x_world=samples_x_world[0], train=True,
+                                                                 samples_x_world=samples_x_world['train'], train=True,
                                                                  download=True)
         val_imgs, val_labels, val_indexes = create_dataset(n_digit=n_digits, sequence_len=2,
-                                                           samples_x_world=samples_x_world[1], train=True,
+                                                           samples_x_world=samples_x_world['val'], train=True,
                                                            download=True)
         test_imgs, test_labels, test_indexes = create_dataset(n_digit=n_digits, sequence_len=2,
-                                                              samples_x_world=samples_x_world[2], train=False,
+                                                              samples_x_world=samples_x_world['test'], train=False,
                                                               download=True)
+
+        print(f"Dataset dimensions: \n\t{dataset_dim['train']} train ({samples_x_world['train']} samples per world), \n\t{dataset_dim['val']} validation ({samples_x_world['val']} samples per world), \n\t{dataset_dim['test']} test ({samples_x_world['test']} samples per world)")
+
+
         data = {'train': {'images': train_imgs, 'labels': train_labels},
                 'val': {'images': val_imgs, 'labels': val_labels},
                 'test': {'images': test_imgs, 'labels': test_labels}}
