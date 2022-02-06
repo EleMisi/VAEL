@@ -15,7 +15,7 @@ from torch import nn, optim
 
 from models.vael import MNISTPairsVAELModel
 from models.vael_network import Encoder, Decoder, MLP
-from utils.nMNIST_addition import nMNIST, check_dataset
+from utils.digits_addition_dataset import nMNIST, check_dataset
 from utils.metrics_VAEL import reconstructive_ability, discriminative_ability, generative_ability
 from utils.plot_utils_VAEL import conditional_image_generation, learning_curve, image_reconstruction, image_generation
 from utils.problog_model import create_facts, define_ProbLog_model
