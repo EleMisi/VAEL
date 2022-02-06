@@ -3,6 +3,9 @@ VAEL experiment(s) configuration
 """
 device = 'cpu'
 n_digits = 10
+batch_size = {'train':30,
+              'val':120,
+              'test':60}
 exp_config= {'task': ['base'],
               'tag': [f'base_{n_digits}Digits'],
               'rec_loss': ['LAPLACE'],

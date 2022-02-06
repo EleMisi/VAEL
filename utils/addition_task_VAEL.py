@@ -15,7 +15,7 @@ from torch import nn, optim
 
 from models.vael import MNISTPairsVAELModel
 from models.vael_network import Encoder, Decoder, MLP
-from utils.dataloader import nMNIST
+from utils.nMNIST_addition import nMNIST, check_dataset
 from utils.metrics_VAEL import reconstructive_ability, discriminative_ability, generative_ability
 from utils.plot_utils_VAEL import conditional_image_generation, learning_curve, image_reconstruction, image_generation
 from utils.problog_model import create_facts, define_ProbLog_model
@@ -57,78 +57,30 @@ def update_resource(log_filepath, update_info, lock_filename='access.lock'):
         release_lock(lock_filename)
 
 
-def load_data(n_digits, sequence_len, train_batch_size, test_batch_size, data_path, data_folder, train_label2idx=None,
-              test_label2idx=None, task='base', tag='base', classes=None):
-    if task == 'sup':
-        print('\nSupervised training\n')
-        sup_idxs = torch.load(data_folder + "{}_train_idxs.pt".format(tag))
-        train_idxs = torch.load(data_folder + "train_idxs.pt")
-        val_idxs = torch.load(data_folder + "val_idxs.pt")
-        test_idxs = torch.load(data_folder + 'test_idxs.pt')
+def load_data(n_digits, sequence_len, batch_size, data_path, data_folder, task='base', tag='base', classes=None):
 
-        # Prepare data
-        train_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=train_batch_size, idxs=train_idxs,
-                           train=True, sup=True, sup_digits=sup_idxs, label2idx=train_label2idx, data_path=data_path)
-        val_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=train_batch_size, idxs=val_idxs,
-                         train=True, sup=False, sup_digits=None, label2idx=train_label2idx, data_path=data_path)
-
-        test_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=test_batch_size, idxs=test_idxs,
-                          train=False, sup=False, sup_digits=None, label2idx=test_label2idx, data_path=data_path)
-
-    elif task == 'base':
+    if task == 'base':
         print("\n Base task\n")
-        train_idxs = torch.load(data_folder + "train_idxs.pt".format(tag))
-        # train_idxs = {key:value.reshape(1,-1) for key, value in train_idxs.items()}
-        val_idxs = torch.load(data_folder + "val_idxs.pt")
-        test_idxs = torch.load(data_folder + 'test_idxs.pt')
+        train_idxs = torch.load(data_folder + "train_indexes.pt")
+        val_idxs = torch.load(data_folder + "val_indexes.pt")
+        test_idxs = torch.load(data_folder + 'test_indexes.pt')
 
         # Prepare data
-        train_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=train_batch_size, idxs=train_idxs,
-                           train=True, sup=False, sup_digits=None, label2idx=train_label2idx, data_path=data_path)
-        val_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=32, idxs=val_idxs, train=True,
-                         sup=False, sup_digits=None, label2idx=train_label2idx, data_path=data_path)
+        train_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=batch_size['train'], idxs=train_idxs,
+                           train=True, sup=False, sup_digits=None, data_path=data_path)
+        val_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=batch_size['val'], idxs=val_idxs, train=True,
+                         sup=False, sup_digits=None, data_path=data_path)
 
-        test_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=test_batch_size, idxs=test_idxs,
-                          train=False, sup=False, sup_digits=None, label2idx=test_label2idx, data_path=data_path)
-    elif task == 'OOD_class' and classes:
-        print('OOD classification')
+        test_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=batch_size['test'], idxs=test_idxs,
+                          train=False, sup=False, sup_digits=None, data_path=data_path)
 
-        train_idxs = torch.load(data_folder + "train_idxs.pt")
-        val_idxs = torch.load(data_folder + "val_idxs.pt")
-        test_idxs = torch.load(data_folder + 'test_idxs.pt')
 
-        train_set = nMNIST(sequence_len, worlds=classes, digits=n_digits, batch_size=32, idxs=train_idxs, train=True,
-                           sup=False, sup_digits=None, label2idx=train_label2idx, data_path=data_path)
-
-        val_set = nMNIST(sequence_len, worlds=classes, digits=n_digits, batch_size=32, idxs=val_idxs, train=True,
-                         sup=False, sup_digits=None, label2idx=train_label2idx, data_path=data_path)
-
-        test_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=test_batch_size, idxs=test_idxs,
-                          train=False, sup=False, sup_digits=None, label2idx=test_label2idx, data_path=data_path)
-
-    elif 'OOD_class_sup' in task and classes:
-        print('OOD classification with sup', task[-1])
-
-        sup_idxs = torch.load(data_folder + "OOD_class_sup{}_train_idxs.pt".format(task[-1]))
-        train_idxs = torch.load(data_folder + "train_idxs.pt")
-        val_idxs = torch.load(data_folder + "val_idxs.pt")
-        test_idxs = torch.load(data_folder + 'test_idxs.pt')
-
-        train_set = nMNIST(sequence_len, worlds=classes, digits=n_digits, batch_size=32, idxs=train_idxs, train=True,
-                           sup=True, sup_digits=sup_idxs, label2idx=train_label2idx, data_path=data_path)
-
-        val_set = nMNIST(sequence_len, worlds=classes, digits=n_digits, batch_size=32, idxs=val_idxs, train=True,
-                         sup=False, sup_digits=None, label2idx=train_label2idx, data_path=data_path)
-
-        test_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=test_batch_size, idxs=test_idxs,
-                          train=False, sup=False, sup_digits=None, label2idx=test_label2idx, data_path=data_path)
-    else:
-        raise ValueError('Unknown task!')
-
-    print("Train set: {} batches of {} images ({} images)".format(len(train_set), train_batch_size,
-                                                                  len(train_set) * train_batch_size))
-    print("Validation set: {} batches of {} images ({} images)".format(len(val_set), 32,
-                                                                       len(val_set) * 32))
+    print("Train set: {} batches of {} images ({} images)".format(len(train_set), batch_size['train'],
+                                                                  len(train_set) * batch_size['train']))
+    print("Validation set: {} batches of {} images ({} images)".format(len(val_set), batch_size['val'],
+                                                                  len(val_set) * batch_size['val']))
+    print("Test set: {} batches of {} images ({} images)".format(len(test_set), batch_size['test'],
+                                                                  len(test_set) * batch_size['test']))
     return train_set, val_set, test_set
 
 
@@ -265,29 +217,21 @@ def build_worlds_queries_matrix(sequence_len, n_digits):
     return w_q
 
 
-def run_vael(param_grid, exp_class, exp_folder, data_folder, data_file, n_digits, task='base', tag='base',
-             train_label2idx=None, test_label2idx=None, device='cpu', time_limit=500, early_stopping_info=None,
-             classes=None, time_delta=350):
+def run_vael(param_grid, exp_class, exp_folder, data_folder, data_file, n_digits, batch_size, task='base', tag='base', device='cpu',
+             time_limit=500, early_stopping_info=None, classes=None, time_delta=350):
     print("\nDevice:", device)
     print()
 
     # Load data
-    batch_size = 32
     sequence_len = 2  # Number of digits in the sequence
     label_dim = n_digits * sequence_len
 
     # Load data
     data_path = os.path.join(data_folder, data_file)
-    train_set, val_set, test_set = load_data(n_digits=n_digits,
-                                             sequence_len=sequence_len,
-                                             train_batch_size=batch_size,
-                                             test_batch_size=100,
-                                             data_path=data_path,
-                                             data_folder=data_folder,
-                                             train_label2idx=train_label2idx,
-                                             test_label2idx=test_label2idx,
-                                             task=task,
-                                             tag=tag,
+    # Check whether dataset exists, if not build it
+    check_dataset(n_digits, data_folder, data_file)
+    train_set, val_set, test_set = load_data(n_digits=n_digits, sequence_len=sequence_len, batch_size=batch_size,
+                                             data_path=data_path, data_folder=data_folder, task=task, tag=tag,
                                              classes=classes)
 
     # MNIST classifier
@@ -362,8 +306,8 @@ def run_vael(param_grid, exp_class, exp_folder, data_folder, data_file, n_digits
                                                                               folder=os.path.join(exp_folder, exp_class,
                                                                                                   exp_ID),
                                                                               rec_loss=config['rec_loss'],
-                                                                              train_batch_size=batch_size,
-                                                                              val_batch_size=batch_size)
+                                                                              train_batch_size=batch_size['train'],
+                                                                              val_batch_size=batch_size['val'])
 
             # Timing
             end = time()
