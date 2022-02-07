@@ -39,7 +39,7 @@ def image_reconstruction(model, name, folder, img_suff="", img_dim=[28, 56], tes
                 label = label.to(model.device)
 
                 recon_img = model(image, label)[0]
-                image = (recon_img - recon_img.min()) / (recon_img.max() - recon_img.min())
+                recon_img = (recon_img - recon_img.min()) / (recon_img.max() - recon_img.min())
                 recon[i] = recon_img
 
                 image = (image - image.min()) / (image.max() - image.min())
@@ -103,10 +103,10 @@ def image_generation(model, name, folder, img_suff="", n_samples=9, batch_size=3
             z_sym_2 = z_sym_2 / Z2  # Normalize
             model.digits_probs = torch.stack([z_sym_1, z_sym_2], dim=1)
 
-            queries = list(range(model.mlp.n_digits + model.mlp.n_digits - 1))
+            queries = list(range(model.mlp.n_facts + model.mlp.n_facts - 1))
             query_prob = torch.empty(1, len(queries))
             for query in queries:
-                q_prob, worlds_prob = model.problog_inference(model.digits_probs, query=query)
+                q_prob, worlds_prob = model.problog_inference(model.digits_probs, labels=query)
                 query_prob[:, query] = q_prob[0]
             batch_labels.append(torch.argmax(query_prob, dim=1)[0])
 
