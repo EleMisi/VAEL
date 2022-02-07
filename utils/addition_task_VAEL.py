@@ -58,7 +58,6 @@ def update_resource(log_filepath, update_info, lock_filename='access.lock'):
 
 
 def load_data(n_digits, sequence_len, batch_size, data_path, data_folder, task='base', tag='base', classes=None):
-
     if task == 'base':
         print("\n Base task\n")
         train_idxs = torch.load(data_folder + "train_indexes.pt")
@@ -68,18 +67,18 @@ def load_data(n_digits, sequence_len, batch_size, data_path, data_folder, task='
         # Prepare data
         train_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=batch_size['train'], idxs=train_idxs,
                            train=True, sup=False, sup_digits=None, data_path=data_path)
-        val_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=batch_size['val'], idxs=val_idxs, train=True,
+        val_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=batch_size['val'], idxs=val_idxs,
+                         train=True,
                          sup=False, sup_digits=None, data_path=data_path)
         test_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=batch_size['test'], idxs=test_idxs,
                           train=False, sup=False, sup_digits=None, data_path=data_path)
 
-
     print("Train set: {} batches of {} images ({} images)".format(len(train_set), batch_size['train'],
                                                                   len(train_set) * batch_size['train']))
     print("Validation set: {} batches of {} images ({} images)".format(len(val_set), batch_size['val'],
-                                                                  len(val_set) * batch_size['val']))
+                                                                       len(val_set) * batch_size['val']))
     print("Test set: {} batches of {} images ({} images)".format(len(test_set), batch_size['test'],
-                                                                  len(test_set) * batch_size['test']))
+                                                                 len(test_set) * batch_size['test']))
     return train_set, val_set, test_set
 
 
@@ -216,7 +215,8 @@ def build_worlds_queries_matrix(sequence_len, n_digits):
     return w_q
 
 
-def run_vael(param_grid, exp_class, exp_folder, data_folder, data_file, n_digits, batch_size, dataset_dimension, task='base', tag='base', device='cpu',
+def run_vael(param_grid, exp_class, exp_folder, data_folder, data_file, n_digits, batch_size, dataset_dimension,
+             task='base', tag='base', device='cpu',
              time_limit=500, early_stopping_info=None, classes=None, time_delta=350):
     print("\nDevice:", device)
     print()
@@ -273,8 +273,7 @@ def run_vael(param_grid, exp_class, exp_folder, data_folder, data_file, n_digits
                               dropout=config['dropout_ENC'])
             decoder = Decoder(label_dim=label_dim, hidden_channels=64, latent_dim=config['latent_dim_sub'],
                               dropout=config['dropout_DEC'])
-            mlp = MLP(in_features=config['latent_dim_sym'],
-                      n_digits=n_digits)
+            mlp = MLP(in_features=config['latent_dim_sym'], n_facts=n_digits * 2)
             model = MNISTPairsVAELModel(encoder=encoder, decoder=decoder, mlp=mlp,
                                         latent_dims=(config['latent_dim_sym'], config['latent_dim_sub']),
                                         model_dict=model_dict, w_q=w_q, dropout=config['dropout'], is_train=True,

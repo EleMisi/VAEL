@@ -5,7 +5,7 @@ from problog.logic import Var, AnnotatedDisjunction
 def create_facts(sequence_len, n_digits=10):
     """
     Return the list of ADs necessary to describe an image with 'sequence_len' digits.
-    'n_digits' specifies how many digits we are considering (i.e. n_digits = 2 means that the images can contain only 0 or 1)
+    'n_facts' specifies how many digits we are considering (i.e. n_facts = 2 means that the images can contain only 0 or 1)
     """
 
     ad = []  # Empty list to store the ADs

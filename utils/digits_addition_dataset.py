@@ -1,13 +1,14 @@
-from itertools import product
-from random import sample, choice
-import numpy as np
 import os
+from itertools import product
+from pathlib import Path
+from random import sample, choice
+
+import numpy as np
 import torch
 from torch import tensor, load
 from torch.utils.data import Dataset
 from torchvision import datasets
 from tqdm import tqdm
-from pathlib import Path
 
 
 # TODO: Documentation
@@ -44,7 +45,7 @@ class nMNIST(Dataset):
         Load the list of image indexes for reproducibility
         """
         self.samples_x_world = idxs[self.worlds[0]].shape[0]
-        self.idxs = {k:v.reshape(self.batch_size, -1) for k,v in idxs.items()}
+        self.idxs = {k: v.reshape(self.batch_size, -1) for k, v in idxs.items()}
         self.n_samples = len(self.idxs) * self.samples_x_world
         print("Indexes loaded: total images {}, samples per world {}".format(self.n_samples, self.samples_x_world))
 
@@ -118,7 +119,6 @@ class nMNIST(Dataset):
         # self.world_counter = {c: self.samples_x_world for c in self.worlds}
 
 
-
 def create_sample(X, target_sequence, digit2idx):
     idxs = [choice(digit2idx[digit][0]) for digit in target_sequence]
     imgs = [X[idx] for idx in idxs]
@@ -157,7 +157,7 @@ def create_dataset(n_digit=2, sequence_len=2, samples_x_world=100, train=True, d
         for i, label in enumerate(labels):
             if tuple(label[:2]) == k:
                 v.add(i)
-    label2idx = {k: tensor(list(v)) for k,v in label2idx.items()}
+    label2idx = {k: tensor(list(v)) for k, v in label2idx.items()}
 
     return np.array(imgs).astype('int32'), np.array(labels), label2idx
 
@@ -172,8 +172,8 @@ def check_dataset(n_digits, data_folder, data_file, dataset_dim):
         print("No dataset found.")
         # Define dataset dimension so to have teh same number of worlds
         n_worlds = n_digits * n_digits
-        samples_x_world = {k: int(d /n_worlds) for k,d in dataset_dim.items()}
-        dataset_dim = {k: s * n_worlds for k,s in samples_x_world.items()}
+        samples_x_world = {k: int(d / n_worlds) for k, d in dataset_dim.items()}
+        dataset_dim = {k: s * n_worlds for k, s in samples_x_world.items()}
 
         train_imgs, train_labels, train_indexes = create_dataset(n_digit=n_digits, sequence_len=2,
                                                                  samples_x_world=samples_x_world['train'], train=True,
@@ -185,8 +185,8 @@ def check_dataset(n_digits, data_folder, data_file, dataset_dim):
                                                               samples_x_world=samples_x_world['test'], train=False,
                                                               download=True)
 
-        print(f"Dataset dimensions: \n\t{dataset_dim['train']} train ({samples_x_world['train']} samples per world), \n\t{dataset_dim['val']} validation ({samples_x_world['val']} samples per world), \n\t{dataset_dim['test']} test ({samples_x_world['test']} samples per world)")
-
+        print(
+            f"Dataset dimensions: \n\t{dataset_dim['train']} train ({samples_x_world['train']} samples per world), \n\t{dataset_dim['val']} validation ({samples_x_world['val']} samples per world), \n\t{dataset_dim['test']} test ({samples_x_world['test']} samples per world)")
 
         data = {'train': {'images': train_imgs, 'labels': train_labels},
                 'val': {'images': val_imgs, 'labels': val_labels},
@@ -201,5 +201,3 @@ def check_dataset(n_digits, data_folder, data_file, dataset_dim):
             torch.save(value, os.path.join(data_folder, f'{key}_indexes.pt'))
 
         print(f"Dataset saved in {data_folder}")
-
-

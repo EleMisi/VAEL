@@ -1,5 +1,3 @@
-"""# Batch Problog """
-
 import torch
 from problog.evaluator import Semiring
 
@@ -60,9 +58,3 @@ class GraphSemiring(Semiring):
         """Transform the given external value into an internal value."""
         v = self.weights.get(a, a)
         return v
-        # if 0.0 - self.eps <= v <= 1.0 + self.eps:
-        #     return v
-        # else:
-        #     raise InvalidValue(
-        #         "Not a valid value for this semiring: %s = %f" % (a,v)
-        #     )

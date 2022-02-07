@@ -1,4 +1,4 @@
-from torch import nn
+from torch import nn, split
 
 
 class Flatten(nn.Module):
@@ -141,18 +141,17 @@ class Decoder(nn.Module):
 
 
 class MLP(nn.Module):
-    def __init__(self, in_features=20, n_digits=10, hidden_channels=20):
+    def __init__(self, in_features=20, n_facts=10, hidden_channels=20):
         super(MLP, self).__init__()
 
-        self.n_digits = n_digits
+        self.n_facts = n_facts
         self.hidden_layer = nn.Linear(in_features=in_features, out_features=hidden_channels)
-        self.dense_z1 = nn.Linear(in_features=hidden_channels, out_features=n_digits)
-        self.dense_z2 = nn.Linear(in_features=hidden_channels, out_features=n_digits)
+        self.dense = nn.Linear(in_features=hidden_channels, out_features=n_facts)
 
     def forward(self, x):
         x = self.hidden_layer(x)
         x = nn.ReLU()(x)
-        z1 = self.dense_z1(x)
-        z2 = self.dense_z2(x)
+        z = self.dense(x)
+        z1, z2 = split(z, self.n_facts // 2, dim=1)
 
         return z1, z2

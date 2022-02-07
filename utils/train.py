@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from tqdm.auto import tqdm
 
-from utils.EarlyStopping import EarlyStopping
+from utils.early_stopping import EarlyStopping
 from utils.graph_semiring import GraphSemiring
 from utils.printing_utils import prettify_statistics
 

@@ -80,33 +80,16 @@ def image_generation(model, name, folder, img_suff="", n_samples=9, batch_size=3
             z = torch.normal(mean, sigma, size=(1, model.latent_dim_sub + model.latent_dim_sym))
             z = z.to(model.device)
 
-            # Split z in two
-            z1 = z[:, : model.latent_dim_sym]  # 1 -> SYMBOLIC
-            z_subsym = z[:, model.latent_dim_sym:]  # 2 -> SUB-SYM
+            # Subsymbolical latent variable
+            z_subsym = z[:, model.latent_dim_sym:]
 
-            # Extract digits_probs for each digit
-            z_sym_1, z_sym_2 = model.mlp(z1)
+            # Extract probability for each digit
+            model.facts_probs = model.compute_facts_probability(z[:, :model.latent_dim_sym])
 
-            # SotfMax on digits_probs
-            z_sym_1 = torch.nn.Softmax(dim=1)(z_sym_1)
-            z_sym_2 = torch.nn.Softmax(dim=1)(z_sym_2)
-
-            # Clamp digits_probs to avoid ProbLog underflow
-            eps = 1e-5
-            z_sym_1 = z_sym_1 + eps  # Add a small constant
-            with torch.no_grad():
-                Z1 = torch.sum(z_sym_1, dim=-1, keepdim=True)
-            z_sym_1 = z_sym_1 / Z1  # Normalize
-            z_sym_2 = z_sym_2 + eps  # Add a small constant
-            with torch.no_grad():
-                Z2 = torch.sum(z_sym_2, dim=-1, keepdim=True)
-            z_sym_2 = z_sym_2 / Z2  # Normalize
-            model.digits_probs = torch.stack([z_sym_1, z_sym_2], dim=1)
-
-            queries = list(range(model.mlp.n_facts + model.mlp.n_facts - 1))
+            queries = list(range(model.mlp.n_facts - 1))
             query_prob = torch.empty(1, len(queries))
             for query in queries:
-                q_prob, worlds_prob = model.problog_inference(model.digits_probs, labels=query)
+                q_prob, worlds_prob = model.problog_inference(model.facts_probs, query=query)
                 query_prob[:, query] = q_prob[0]
             batch_labels.append(torch.argmax(query_prob, dim=1)[0])
 
@@ -156,31 +139,14 @@ def conditional_image_generation(model, name, folder, img_suff="", batch_size=32
                     z = torch.normal(mean, sigma, size=(1, model.latent_dim_sym + model.latent_dim_sub))
                     z = z.to(model.device)
 
-                    # Split z in two
-                    z1 = z[:, : model.latent_dim_sym]  # 1 -> SYMBOLIC
-                    z_subsym = z[:, model.latent_dim_sym:]  # 2 -> SUB-SYM
+                    # Subsymbolical latent variable
+                    z_subsym = z[:, model.latent_dim_sym:]
 
-                    # Extract digits_probs for each digit
-                    z_sym_1, z_sym_2 = model.mlp(z1)
-
-                    # SotfMax on digits_probs
-                    z_sym_1 = torch.nn.Softmax(dim=1)(z_sym_1)
-                    z_sym_2 = torch.nn.Softmax(dim=1)(z_sym_2)
-
-                    # Clamp digits_probs to avoid ProbLog underflow
-                    eps = 1e-5
-                    z_sym_1 = z_sym_1 + eps  # Add a small constant
-                    with torch.no_grad():
-                        Z1 = torch.sum(z_sym_1, dim=-1, keepdim=True)
-                    z_sym_1 = z_sym_1 / Z1  # Normalize
-                    z_sym_2 = z_sym_2 + eps  # Add a small constant
-                    with torch.no_grad():
-                        Z2 = torch.sum(z_sym_2, dim=-1, keepdim=True)
-                    z_sym_2 = z_sym_2 / Z2  # Normalize
-                    model.digits_probs = torch.stack([z_sym_1, z_sym_2], dim=1)
+                    # Extract probability for each digit
+                    model.facts_probs = model.compute_facts_probability(z[:, :model.latent_dim_sym])
 
                     # Problog inference to compute worlds probability distributions given the evidence P(w|e)
-                    worlds_prob = model.problog_inference_with_evidence(model.digits_probs, evidence)
+                    worlds_prob = model.problog_inference_with_evidence(model.facts_probs, evidence)
 
                     # Sample a world according to P(w) via gumbel softmax
                     logits = torch.log(worlds_prob)
