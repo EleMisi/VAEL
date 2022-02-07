@@ -2,6 +2,7 @@ import os.path
 import random
 from datetime import datetime
 from itertools import product
+from math import isnan
 from pathlib import Path
 from time import time, sleep
 
@@ -116,11 +117,25 @@ def define_experiment(exp_folder, exp_class, params, exp_counter):
 
         # Check if the required number of test has been already satisfied
         required_exp = params['n_exp']
-        exp_ID = ''.join(f'{params[key]}-' for key in params_columns)[:-1]
-        if len(log_csv) > 0:
-            n_exp = len(log_csv[log_csv['exp_ID'] == exp_ID]['run_ID'])
 
-            if n_exp < required_exp:
+        if len(log_csv) > 0:
+            query = ''.join(f' {key} == {params[key]} &' for key in params_columns)[:-1]
+            n_exp = len(log_csv.query(query))
+            if n_exp == 0:
+                exp_ID = log_csv['exp_ID'].max() + 1
+                if isnan(exp_ID):
+                    exp_ID = 1
+                counter = required_exp - n_exp
+                print("\n\n{} compatible experiments found in file {} -> {} experiments to run.".format(n_exp,
+                                                                                                        os.path.join(
+                                                                                                            exp_folder,
+                                                                                                            exp_class,
+                                                                                                            exp_class + '.csv'),
+                                                                                                        counter))
+
+                run_ID = datetime.today().strftime('%d-%m-%Y-%H-%M-%S')
+            elif n_exp < required_exp:
+                exp_ID = log_csv.query(query)['exp_ID'].values[0]
                 counter = required_exp - n_exp
                 print("\n\n{} compatible experiments found in file {} -> {} experiments to run.".format(n_exp,
                                                                                                         os.path.join(
@@ -139,9 +154,13 @@ def define_experiment(exp_folder, exp_class, params, exp_counter):
                                                                                                             exp_class + '.csv'),
                                                                                                         0))
                 counter = 0
+                exp_ID = log_csv.query(query)['exp_ID'].values[0]
                 run_ID = None
         else:
             counter = required_exp
+            exp_ID = log_csv['exp_ID'].max() + 1
+            if isnan(exp_ID):
+                exp_ID = 1
             run_ID = datetime.today().strftime('%d-%m-%Y-%H-%M-%S')
             print("\n\n0 compatible experiments found in file {} -> {} experiments to run.".format(
                 exp_folder + exp_class + '.csv',
@@ -160,7 +179,7 @@ def define_experiment(exp_folder, exp_class, params, exp_counter):
                      'rec_loss'] + "_recon_test,acc_discr_test,acc_gen,epochs,max_epoch,time,tag\n"
         log_file.write(header)
         # Define experiment ID
-        exp_ID = ''.join(f'{params[key]}-' for key in params_columns)[:-1]
+        exp_ID = 1
         run_ID = datetime.today().strftime('%d-%m-%Y-%H-%M-%S')
         print()
         print('-' * 40)
@@ -178,7 +197,7 @@ def define_experiment(exp_folder, exp_class, params, exp_counter):
     print('*' * 40)
     print()
 
-    return run_ID, exp_ID, exp_counter, counter
+    return run_ID, str(exp_ID), exp_counter, counter, params_columns
 
 
 def build_model_dict(sequence_len, n_digits):
@@ -264,7 +283,8 @@ def run_vael(param_grid, exp_class, exp_folder, data_folder, data_file, n_digits
         while counter and elapsed + time_delta < time_limit:
 
             # Check if the required number of test for the current configuration has been already satisfied
-            run_ID, exp_ID, exp_counter, counter = define_experiment(exp_folder, exp_class, config, exp_counter)
+            run_ID, exp_ID, exp_counter, counter, params_columns = define_experiment(exp_folder, exp_class, config,
+                                                                                     exp_counter)
             if not counter:
                 break
 
@@ -345,7 +365,7 @@ def run_vael(param_grid, exp_class, exp_folder, data_folder, data_file, n_digits
                 predictive_acc_val_set = discriminative_ability(model, val_set)
                 print("Number Of Images Tested =", test_set.samples_x_world * len(test_set))
                 print("Discriminative Accuracy =", predictive_acc_test_set)
-                print("\n   Evaluating generative...")
+                print("\n   Evaluating generative ability...")
                 test_set.reset_counter()
                 n_sample = 100
                 generative_acc = generative_ability(model, clf, n_sample)
@@ -353,8 +373,6 @@ def run_vael(param_grid, exp_class, exp_folder, data_folder, data_file, n_digits
                 print("Generative Accuracy =", generative_acc)
 
             # Update log file
-            params_columns = ['latent_dim_sub', 'latent_dim_sym', 'learning_rate', 'dropout', 'dropout_DEC', 'recon_w',
-                              'kl_w', 'query_w', 'sup_w']
             update_info = '{},{},'.format(exp_ID, run_ID) + ''.join(
                 str(config[key]) + ',' for key in params_columns) + "{},{},{},{},{},{},{},{},{}\n".format(
                 float(recon_acc_val_set),

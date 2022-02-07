@@ -242,7 +242,7 @@ def train_PLVAE(model, optimizer, n_epochs, train_set, val_set, folder, early_st
             np.save(os.path.join(os.path.join(folder, run_ID), 'validation_info.npy'), validation_info)
             return path, epoch, train_info, validation_info
 
-    path = os.path.join(folder, 'checkpoint.pt')
+    path = os.path.join(folder, run_ID, 'checkpoint.pt')
     checkpoint = {
         'model': model.state_dict(),
         'optimizer': optimizer.state_dict()}
