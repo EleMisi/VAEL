@@ -237,9 +237,9 @@ def build_worlds_queries_matrix(sequence_len, n_digits):
 def run_vael(param_grid, exp_class, exp_folder, data_folder, data_file, n_digits, batch_size, dataset_dimension,
              task='base', tag='base', device='cpu',
              time_limit=500, early_stopping_info=None, classes=None, time_delta=350):
+    # Set device
+    device = torch.device(device if torch.cuda.is_available() else 'cpu')
     print("\nDevice:", device)
-    print()
-
     # Load data
     sequence_len = 2  # Number of digits in the sequence
     label_dim = n_digits * sequence_len
