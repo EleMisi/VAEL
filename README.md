@@ -1,6 +1,19 @@
 # VAEL
 
 Codebase for _Bridging Variational Autoencoders and Probabilistic Logic Programming_.
+We kindly ask you to cite our work if you use this codebase:
+
+    @misc{https://doi.org/10.48550/arxiv.2202.04178,
+      doi = {10.48550/ARXIV.2202.04178},
+      url = {https://arxiv.org/abs/2202.04178},
+      author = {Misino, Eleonora and Marra, Giuseppe and Sansone, Emanuele},
+      keywords = {Programming Languages (cs.PL), Machine Learning (cs.LG), FOS: Computer and information sciences, FOS: Computer and information sciences},
+      title = {VAEL: Bridging Variational Autoencoders and Probabilistic Logic Programming},
+      publisher = {arXiv},
+      year = {2022},
+      copyright = {arXiv.org perpetual, non-exclusive license}
+    }
+
 
 
 
