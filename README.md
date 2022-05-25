@@ -19,11 +19,12 @@ We kindly ask you to cite our work if you use this codebase:
 
 ## Prerequisites
 
-* Python 3.7
+* Python >=3.7 
 * Dependencies:
   ```sh
   pip install -r requirements.txt
   ```
+  _Note_: if something goes wrong with PySDD, try `pip install -vvv --upgrade --force-reinstall --no-binary :all: --no-deps pysdd`
 
 ## Usage
 
@@ -41,6 +42,7 @@ We kindly ask you to cite our work if you use this codebase:
    ```sh
    python run_VAEL.py
    ```
+   Use flag `--task mnist` to run _2digit MNIST_ experiment(s), and `--task mario` to run _Mario_ experiment(s).
 
 ## Results
 The results are stored in the folder ./<exp_folder>/<exp_class>/ specified in _run_VAEL.py_.  

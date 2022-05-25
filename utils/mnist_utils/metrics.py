@@ -3,7 +3,7 @@ import torch
 from torch.nn import functional as F
 
 from utils.graph_semiring import GraphSemiring
-from utils.train import img_log_likelihood
+from utils.mnist_utils.train import img_log_likelihood
 
 
 # Reconstructive Ability

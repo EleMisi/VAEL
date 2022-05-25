@@ -15,12 +15,12 @@ from sklearn.model_selection import ParameterGrid
 from torch import nn, optim
 
 from models.vael import MNISTPairsVAELModel
-from models.vael_network import Encoder, Decoder, MLP
-from utils.digits_addition_dataset import nMNIST, check_dataset
-from utils.metrics_VAEL import reconstructive_ability, discriminative_ability, generative_ability
-from utils.plot_utils_VAEL import conditional_image_generation, learning_curve, image_reconstruction, image_generation
-from utils.problog_model import create_facts, define_ProbLog_model
-from utils.train import train_PLVAE
+from models.vael_networks import MNISTPairsEncoder, MNISTPairsDecoder, MNISTPairsMLP
+from utils.mnist_utils.mnist_addition_dataset import nMNIST, check_dataset
+from utils.mnist_utils.metrics import reconstructive_ability, discriminative_ability, generative_ability
+from utils.mnist_utils.plot_utils import conditional_image_generation, learning_curve, image_reconstruction, image_generation
+from utils.mnist_utils.problog_model import create_facts, define_ProbLog_model
+from utils.mnist_utils.train import train_PLVAE
 
 
 # TODO: Documentation
@@ -58,14 +58,15 @@ def update_resource(log_filepath, update_info, lock_filename='access.lock'):
         release_lock(lock_filename)
 
 
-def load_data(n_digits, sequence_len, batch_size, data_path, data_folder, task='base', tag='base', classes=None):
+def load_data(n_digits, sequence_len, batch_size, data_file, data_folder, task='base', tag='base', classes=None):
     if task == 'base':
         print("\n Base task\n")
-        train_idxs = torch.load(data_folder + "train_indexes.pt")
-        val_idxs = torch.load(data_folder + "val_indexes.pt")
-        test_idxs = torch.load(data_folder + 'test_indexes.pt')
+        train_idxs = torch.load(os.path.join(data_folder,"train_indexes.pt"))
+        val_idxs = torch.load(os.path.join(data_folder,"val_indexes.pt"))
+        test_idxs = torch.load(os.path.join(data_folder,"test_indexes.pt"))
 
         # Prepare data
+        data_path = os.path.join(data_folder, data_file)
         train_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=batch_size['train'], idxs=train_idxs,
                            train=True, sup=False, sup_digits=None, data_path=data_path)
         val_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=batch_size['val'], idxs=val_idxs,
@@ -234,9 +235,8 @@ def build_worlds_queries_matrix(sequence_len, n_digits):
     return w_q
 
 
-def run_vael(param_grid, exp_class, exp_folder, data_folder, data_file, n_digits, batch_size, dataset_dimension,
-             task='base', tag='base', device='cpu',
-             time_limit=500, early_stopping_info=None, classes=None, time_delta=350):
+def run_mnist_vael(param_grid, exp_class, exp_folder, data_folder, batch_size, dataset_dimensions, task='base', tag='base', device='cpu',
+                   time_limit=500, early_stopping_info=None, time_delta=350, n_digits = 10):
     # Set device
     device = torch.device(device if torch.cuda.is_available() else 'cpu')
     print("\nDevice:", device)
@@ -245,15 +245,16 @@ def run_vael(param_grid, exp_class, exp_folder, data_folder, data_file, n_digits
     label_dim = n_digits * sequence_len
 
     # Load data
-    data_path = os.path.join(data_folder, data_file)
+    data_file =  f'2mnist_{n_digits}digits.pt'
+    data_folder = os.path.join(data_folder, f'2mnist_{n_digits}digits')
     # Check whether dataset exists, if not build it
-    check_dataset(n_digits, data_folder, data_file, dataset_dimension)
+    check_dataset(n_digits, data_folder, data_file, dataset_dimensions)
     train_set, val_set, test_set = load_data(n_digits=n_digits, sequence_len=sequence_len, batch_size=batch_size,
-                                             data_path=data_path, data_folder=data_folder, task=task, tag=tag,
-                                             classes=classes)
+                                             data_file=data_file, data_folder=data_folder, task=task, tag=tag,
+                                             classes=None)
 
     # MNIST classifier
-    clf = load_mnist_classifier(checkpoint_path='./utils/MNIST_classifier.pt', device=device)
+    clf = load_mnist_classifier(checkpoint_path='./utils/mnist_utils/MNIST_classifier.pt', device=device)
     clf.eval()
 
     # Define pre-compiled ProbLog programs and worlds-queries matrix
@@ -289,11 +290,11 @@ def run_vael(param_grid, exp_class, exp_folder, data_folder, data_file, n_digits
                 break
 
             # Build VAEL model
-            encoder = Encoder(hidden_channels=64, latent_dim=config['latent_dim_sym'] + config['latent_dim_sub'],
-                              dropout=config['dropout_ENC'])
-            decoder = Decoder(label_dim=label_dim, hidden_channels=64, latent_dim=config['latent_dim_sub'],
-                              dropout=config['dropout_DEC'])
-            mlp = MLP(in_features=config['latent_dim_sym'], n_facts=n_digits * 2)
+            encoder = MNISTPairsEncoder(hidden_channels=64, latent_dim=config['latent_dim_sym'] + config['latent_dim_sub'],
+                                        dropout=config['dropout_ENC'])
+            decoder = MNISTPairsDecoder(label_dim=label_dim, hidden_channels=64, latent_dim=config['latent_dim_sub'],
+                                        dropout=config['dropout_DEC'])
+            mlp = MNISTPairsMLP(in_features=config['latent_dim_sym'], n_facts=n_digits * 2)
             model = MNISTPairsVAELModel(encoder=encoder, decoder=decoder, mlp=mlp,
                                         latent_dims=(config['latent_dim_sym'], config['latent_dim_sub']),
                                         model_dict=model_dict, w_q=w_q, dropout=config['dropout'], is_train=True,

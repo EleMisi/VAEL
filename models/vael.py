@@ -264,3 +264,188 @@ class MNISTPairsVAELModel(VAELModel):
             P = probabilities.sum()
 
         return probabilities / P
+
+
+class MarioVAELModel(VAELModel):
+
+    def __init__(self, encoder, decoder, mlp, latent_dims, model_dict, WQ_all, W_all, WQ_adm, W_adm, grid_dims,
+                 dropout=None, is_train=True, device='cpu'):
+        super(MarioVAELModel, self).__init__(encoder=encoder, decoder=decoder, mlp=mlp, latent_dims=latent_dims,
+                                             model_dict=model_dict, dropout=dropout, is_train=is_train,
+                                             device=device)
+
+        self.grid_dims = grid_dims
+        # P(q,c) -> constraints in the query -> 81 worlds -> to compute the query prob
+        self.WQ_all = WQ_all  # worlds x queries
+        self.W_all = W_all  # worlds x facts
+        # P(w|c) -> constraints as evidence -> 24 worlds -> sampling for decoder label to sample only admissible worlds given the constraint
+        self.WQ_adm = WQ_adm  # worlds x queries
+        self.W_adm = W_adm  # worlds x facts
+        self.eps = 1e-5
+
+        if W_all is not None:
+            assert self.W_all.shape == torch.Size([81, 18]), self.W_all.shape
+        if WQ_all is not None:
+            assert self.WQ_all.shape == torch.Size([81, 5]), self.WQ_all.shape
+        if W_adm is not None:
+            assert self.W_adm.shape == torch.Size([24, 18]), self.W_adm.shape
+        if WQ_adm is not None:
+            assert self.WQ_adm.shape == torch.Size([24, 4]), self.WQ_adm.shape
+
+    def forward(self, x, moves):
+
+        # Input splitting
+        x1, x2 = torch.split(x, x.shape[2] // 2, dim=2)
+
+        # Image encoding
+        mu1, logvar1 = self.encoder(x1)
+        mu2, logvar2 = self.encoder(x2)
+
+        # Sample z
+        z1 = self.reparametrize(mu1, logvar1)
+        z2 = self.reparametrize(mu2, logvar2)
+
+        # Sub-symbolical component
+        self.z_subsym1 = z1[:, self.latent_dim_sym:]
+        self.z_subsym2 = z2[:, self.latent_dim_sym:]
+
+        # Dropout on sub-symbolical variable
+        if self.dropout:
+            self.z_subsym1 = nn.Dropout(p=self.dropout)(self.z_subsym1)
+            self.z_subsym2 = nn.Dropout(p=self.dropout)(self.z_subsym2)
+
+        # Extract probability for each fact from the symbolical component of the latent space
+        # The agent positions are mutually exclusive at each time step-> softmax
+        self.facts_probs1 = nn.Softmax(dim=1)(self.mlp(z1[:, :self.latent_dim_sym]))
+        self.facts_probs2 = nn.Softmax(dim=1)(self.mlp(z2[:, :self.latent_dim_sym]))
+        self.facts_probs1 = torch.clip(self.facts_probs1, min=self.eps, max=0.9999)
+        self.facts_probs2 = torch.clip(self.facts_probs2, min=self.eps, max=0.9999)
+        facts = torch.cat([self.facts_probs1, self.facts_probs2], dim=1)
+
+        # Compute worlds' probability P(W)=prod(p_i)prod(1-p_i)
+        self.worlds_probs = self.compute_worlds_prob_conj(facts)
+
+        # Computing query probability (query = "move" & constraints)
+        self.query_prob = self.compute_query_prob(moves, self.worlds_probs)
+
+        # Compute unnormalized logprob for the admissible worlds P(W|constraint)
+        self.adm_worlds_logprob = self.admissible_worlds_logprob(facts)  # [batch_size, 24]
+
+        # Sample world given P(W|constraint)
+        self.world = F.gumbel_softmax(logits=self.adm_worlds_logprob, tau=1, hard=True)
+
+        # Represent the sampled admissible world in the Herbrand base (truth value for the 18 facts)
+        world_h = torch.matmul(self.world, self.W_adm.type(torch.float))
+
+        # Split the world in the two
+        world1, world2 = torch.split(world_h, self.mlp.n_facts // 2, dim=-1)
+        # Image decoding
+        x_recon1 = self.decode(self.z_subsym1, world1)
+        x_recon2 = self.decode(self.z_subsym2, world2)
+
+        return x1.permute(0,2,3,1), x_recon1.permute(0,2,3,1), mu1, logvar1, x2.permute(0,2,3,1), x_recon2.permute(0,2,3,1), mu2, logvar2, self.query_prob
+
+
+    def define_herbrand_base(self, n_facts):
+        """Defines the herbrand base to encode ProbLog worlds"""
+        n_pos = n_facts // 2
+        eye = torch.eye(n_pos)
+        herbrand_base = torch.cat(
+            [torch.cat((eye[i].expand(n_pos, n_pos), eye), dim=1) for i in
+             range(n_pos)], dim=0)
+
+        return herbrand_base
+
+    def compute_worlds_prob_conj(self, probs):
+        """
+        Extracts the probability distributions of all the possible worlds.
+        """
+        # TODO: implement a more general method for not ADs facts, but also independent facts.
+        log_p_i = torch.log(probs) @ self.W_all.T
+        worlds_probs = torch.exp(log_p_i)
+        return worlds_probs
+
+    def admissible_worlds_logprob(self, probs):
+        """
+        Extracts the unnormalized log probability of those worlds that are admissible (i.e. satisfy the constraint).
+        """
+        log_p_i = torch.log(probs) @ self.W_adm.T
+        log_q_i = torch.log(1 - probs) @ (1 - self.W_adm).T
+        worlds_logprobs = log_p_i + log_q_i
+        return worlds_logprobs
+
+    def compute_query_prob(self, labels, worlds_probs):
+        """
+        Computes the query probability given worlds probability P(w) = prod(p_i)prod(1-p_i).
+        The query is defined as the conjunction between the label and the constraint, to inject additional knowledge in the model.
+        """
+        p_w_model_q = torch.empty(labels.shape[0]).to(self.device)
+
+        # Compute probability of all possible worlds
+        p_all_worlds = torch.sum(worlds_probs, dim=1) + self.eps
+
+        # Add the constraints query as true to the labels
+        # so that the worlds must model both the specific label and the constraints.
+        new_labels = torch.cat([labels, torch.ones(labels.shape[0], 1).to(self.device)], dim=1)
+
+        # Compute probability of all possible worlds that model the query
+        for i in range(len(labels)):
+            w_q = torch.all(self.WQ_all == new_labels[i], axis=1)
+            p_w_model_q[i] = torch.sum(w_q * worlds_probs[i], dim=0)
+
+        # Query prob P(q)
+        p_q = p_w_model_q / p_all_worlds
+
+        return p_q
+
+    def compute_query_prob_cond(self, q, worlds_probs):
+        # TODO: implement a more general method for not ADs facts, but also independent facts for task generalization.
+        # Probability of all possible worlds
+        # sum(p(w|e))
+        p_e = torch.sum(worlds_probs, dim=0) + self.eps
+
+        # Compute probability of all possible worlds that model the query
+        w_q = self.WQ_adm[:, int(q)]
+        p_q_and_e = torch.sum(w_q * worlds_probs, dim=0)
+
+        # Query prob P(q|e) = p
+        p_q_given_e = p_q_and_e / p_e
+
+        return p_q_given_e
+
+    def compute_conditioned_worlds_prob(self, probs, evidence):
+        # TODO
+        evidence = evidence.to(self.device)
+        # Compute the worlds probs given the evidence
+        log_p_i = torch.log(probs) @ self.W_adm.T
+        # Compute worlds probability
+        p_w = torch.exp(log_p_i)
+        # Create a mask over the worlds that satisfy the evidence
+        w_q = torch.all((self.WQ_adm == torch.tensor(evidence)), axis=1)
+        # Compute the probability of the worlds given the evidence
+        p_w_and_e = (p_w * w_q) + self.eps
+        p_e = torch.sum(p_w * w_q) + self.eps
+        p_w_given_e = p_w_and_e / p_e
+
+        return p_w_given_e
+
+    def encode_image(self, x):
+
+        with torch.no_grad():
+            mu, logvar = self.encoder(x)
+            # Sample z
+            z = self.reparametrize(mu, logvar)
+
+            # Sub-symbolical component
+            z_subsym = z[:, self.latent_dim_sym:]
+
+            # Extract probability for each fact from the symbolical component of the latent space
+            facts_probs_ = nn.Softmax(dim=1)(self.mlp(z[:, :self.latent_dim_sym]))
+
+            # Crisp probabilities
+            facts_probs = torch.zeros_like(facts_probs_)
+            mask = facts_probs_ >= facts_probs_.max()
+            facts_probs[mask] = facts_probs_[mask]
+            facts_probs[:, torch.where(facts_probs > 0.5)[1]] = 1.
+
+        return z_subsym, facts_probs

@@ -1,30 +1,64 @@
 """
 VAEL experiment(s) configuration
 """
-device = 'cpu'
-n_digits = 10
-dataset_dimensions = {'train': 42000,
-                      'val': 12000,
-                      'test': 6000}
-batch_size = {'train': 30,
-              'val': 120,
-              'test': 60}
-exp_config = {'task': ['base'],
-              'tag': [f'base_{n_digits}Digits'],
-              'rec_loss': ['LAPLACE'],
-              'max_epoch': [50],
-              'n_exp': [1],
-              'latent_dim_sub': [8],
-              'latent_dim_sym': [15],
-              'learning_rate': [1e-3],
-              'dropout': [0.5],
-              'dropout_ENC': [0.5],
-              'dropout_DEC': [0.5],
-              'recon_w': [1e-1],
-              'kl_w': [1e-5],
-              'query_w': [1.],
-              'sup_w': [0.],
-              'query': [True]}
-early_stopping_info = {
-    'patience': 60,
-    'delta': 1e-4}
+mnist_vael = dict(
+    device = 'cuda:0',
+    n_digits = 10,
+    experiment_name='vael_2digitMNIST',
+    dataset_dimensions = {'train': 42000,
+                          'val': 12000,
+                          'test': 6000},
+    batch_size = {'train': 30,
+                  'val': 120,
+                  'test': 60},
+    exp_config = {'task': ['base'],
+                  'tag': ['base_10Digits'],
+                  'rec_loss': ['LAPLACE'],
+                  'max_epoch': [50],
+                  'n_exp': [5],
+                  'latent_dim_sub': [8],
+                  'latent_dim_sym': [15],
+                  'learning_rate': [1e-3],
+                  'dropout': [0.5],
+                  'dropout_ENC': [0.5],
+                  'dropout_DEC': [0.5],
+                  'recon_w': [1e-1],
+                  'kl_w': [1e-5],
+                  'query_w': [1.],
+                  'sup_w': [0.],
+                  'query': [True]},
+    early_stopping_info = {
+        'patience': 20,
+        'delta': 1e-8})
+
+mario_vael = dict(
+    device='cuda:0',
+    n_facts=18,
+    experiment_name='vael_Mario',
+    lagrangian=False,
+    batch_size={'train': 32,
+                'val': 32,
+                'test': 32},
+    exp_config={'task': ['base'],
+                'tag': ['base'],
+                'rec_loss': ['LAPLACE'],
+                'max_epoch': [200],
+                'n_exp': [5],
+                'latent_dim_sub': [30],
+                'latent_dim_sym': [18],
+                'hidden_chs_MLP': [32],
+                'hidden_chs_ENC': [64],
+                'hidden_chs_DEC': [64],
+                'learning_rate': [1e-4],
+                'dropout': [0.1],
+                'dropout_ENC': [0.0],
+                'dropout_DEC': [0.0],
+                'recon_w': [10.],
+                'kl_w': [10.],
+                'query_w': [1e4],
+                'sup_w': [0.],
+                'query': [True]},
+    early_stopping_info={
+        'patience': 20,
+        'delta': 1e-8,
+        'loss': 'true_elbo'},)

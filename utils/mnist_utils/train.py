@@ -108,8 +108,6 @@ def train_PLVAE(model, optimizer, n_epochs, train_set, val_set, folder, early_st
 
             optimizer.zero_grad()
 
-            batch_size = data.shape[0]
-
             if labels[:, -1].max() > -1:
                 sup = True  # Batch with supervised digits
                 sup_file.write(f'{labels[0][:2]},')
@@ -152,7 +150,7 @@ def train_PLVAE(model, optimizer, n_epochs, train_set, val_set, folder, early_st
             optimizer.step()
 
             pbar.update(1)
-
+            #break
             if batch == len(train_set):
                 break
 
@@ -212,7 +210,7 @@ def train_PLVAE(model, optimizer, n_epochs, train_set, val_set, folder, early_st
             validation_epoch_info['labelBCE'].append(labelBCE.data.cpu().detach().numpy())
 
             pbar.update(1)
-
+            #break
             if batch == len(val_set):
                 break
 
