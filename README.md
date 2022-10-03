@@ -1,7 +1,8 @@
 # VAEL
 
-Codebase for _Bridging Variational Autoencoders and Probabilistic Logic Programming_.
-We kindly ask you to cite our work if you use this codebase:
+Codebase for [_VAEL: Bridging Variational Autoencoders and Probabilistic Logic Programming_](https://arxiv.org/abs/2202.04178).
+
+If you use this codebase, please cite:
 
     @misc{https://doi.org/10.48550/arxiv.2202.04178,
       doi = {10.48550/ARXIV.2202.04178},
