@@ -30,6 +30,8 @@ def reconstructive_ability(model, test_set, rec_loss='MSE'):
             elif rec_loss == 'MSE':
                 recon_loss.append(
                     torch.nn.MSELoss(reduction='mean')(torch.flatten(recon_batch), torch.flatten(data)).cpu().numpy())
+
+            #break
             if i == len(test_set):
                 break
 
@@ -75,6 +77,7 @@ def discriminative_ability(model, test_set):
             pred = torch.argmax(query_prob, dim=1).to(model.device)
             class_loss.append(acc(pred, labels))
 
+            #break
             if i == len(test_set):
                 break
     return np.mean(class_loss)
@@ -123,6 +126,8 @@ def generative_ability(model, clf, n_sample):
                 digit1, digit2 = probab1.index(max(probab1)), probab2.index(max(probab2))
                 if digit1 + digit2 == evidence:
                     acc += 1
+
+            #break
 
     acc = acc / (n_sample * len(model.model_dict['evidence'].keys()))
 
