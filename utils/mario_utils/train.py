@@ -97,7 +97,6 @@ def train(model, optimizer, n_epochs, train_set, val_set, folder, early_stopping
 
     pbar = tqdm(total=n_epochs, position=0, leave=True)
     for epoch in range(1, n_epochs + 1):
-        # view_used_mem()
 
         # Training and validation info
         train_epoch_info = {loss: [] for loss in losses_list}
@@ -108,12 +107,7 @@ def train(model, optimizer, n_epochs, train_set, val_set, folder, early_stopping
         ############
         model.train()
 
-        # Debug
-        # if optimizer_lagrangian is not None:
-        #     print(f'Multipliers: {[recon_w, kl_w, query_w]}')
-
         # Loop over batches
-        # pbar = tqdm(total=len(train_set), position=0, leave=True)
         for batch_idx, batch in enumerate(train_set):
             labels = batch['labels']
             input_img = batch['imgs1']
@@ -229,10 +223,7 @@ def train(model, optimizer, n_epochs, train_set, val_set, folder, early_stopping
         for key, value in validation_epoch_info.items():
             validation_info.setdefault(key, []).append(value)
 
-        # Print epoch validation losses
-        # print('\n{}'.format(prettify_statistics(validation_epoch_info)))
-
-        # Early_stopping needs the validation elbo to check if it has decresed,
+        # Early_stopping needs the validation elbo to check if it has decreased,
         # and if it has, it will make a checkpoint of the current model
         path = early_stopping(validation_epoch_info[early_stopping_info['loss']], model, optimizer)
 

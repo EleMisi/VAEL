@@ -48,7 +48,7 @@ class VAELModel(nn.Module):
         self.z_subsym = z[:, self.latent_dim_sym:]
 
         # Dropout on sub-symbolical variable
-        if self.dropout:
+        if self.dropout and self.training:
             self.z_subsym = nn.Dropout(p=self.dropout)(self.z_subsym)
 
         # Extract probability for each fact from the symbolical component of the latent space
@@ -310,7 +310,7 @@ class MarioVAELModel(VAELModel):
         self.z_subsym2 = z2[:, self.latent_dim_sym:]
 
         # Dropout on sub-symbolical variable
-        if self.dropout:
+        if self.dropout and self.training:
             self.z_subsym1 = nn.Dropout(p=self.dropout)(self.z_subsym1)
             self.z_subsym2 = nn.Dropout(p=self.dropout)(self.z_subsym2)
 

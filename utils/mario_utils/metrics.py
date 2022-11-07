@@ -7,7 +7,6 @@ import pandas as pd
 import seaborn as sn
 import torch
 from sklearn.metrics import f1_score, accuracy_score, confusion_matrix
-from tqdm import tqdm
 
 from utils.mario_utils.train import img_log_likelihood
 
@@ -58,7 +57,7 @@ def discriminative_ability(model, test_set, name=None, folder='./', mode='val'):
                'right': (0, 0, 1, 0),
                'left': (0, 0, 0, 1),
                }
-    class_loss = []
+
     metrics = {
         'f1': 'None',
         'conf_matrix': 'None',
@@ -89,18 +88,6 @@ def discriminative_ability(model, test_set, name=None, folder='./', mode='val'):
             preds.append(torch.argmax(query_prob, dim=1).to(model.device).cpu().numpy())
             target.append(torch.argmax(labels, dim=1).to(model.device).cpu().numpy())
 
-            """
-            facts = problog_model.FACTS_BASE_MODEL
-            idx2fact = {i: e for i, e in
-                        enumerate(facts.replace('\n{}::', ' ').replace('\n', ' ').replace(';', ' ').split())}
-            fact2idx = {e: i for i, e in idx2fact.items()}
-            res = model.W_all[model.worlds_probs.argmax(dim=1)]
-            res = np.array(res)
-            df_cm = pd.DataFrame(res, index=[target[i] for i in range(len(test_set))],
-                                 columns=[idx2fact[i] for i in range(18)])
-            plt.figure(figsize=(10, 7))
-            sn.heatmap(df_cm, annot=True)
-            """
             #break
             if test_set.end:
                 # Reset data generator and exit loop
