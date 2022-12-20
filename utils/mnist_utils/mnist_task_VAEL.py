@@ -68,12 +68,11 @@ def load_data(n_digits, sequence_len, batch_size, data_file, data_folder, task='
         # Prepare data
         data_path = os.path.join(data_folder, data_file)
         train_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=batch_size['train'], idxs=train_idxs,
-                           train=True, sup=False, sup_digits=None, data_path=data_path)
+                           mode='train', sup=False, sup_digits=None, data_path=data_path)
         val_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=batch_size['val'], idxs=val_idxs,
-                         train=True,
-                         sup=False, sup_digits=None, data_path=data_path)
+                         mode='val', sup=False, sup_digits=None, data_path=data_path)
         test_set = nMNIST(sequence_len, worlds=None, digits=n_digits, batch_size=batch_size['test'], idxs=test_idxs,
-                          train=False, sup=False, sup_digits=None, data_path=data_path)
+                          mode='test', sup=False, sup_digits=None, data_path=data_path)
 
     print("Train set: {} batches of {} images ({} images)".format(len(train_set), batch_size['train'],
                                                                   len(train_set) * batch_size['train']))

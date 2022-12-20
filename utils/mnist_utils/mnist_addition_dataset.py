@@ -14,13 +14,26 @@ from tqdm import tqdm
 # TODO: Documentation
 
 class nMNIST(Dataset):
-    """nMNIST dataset."""
+    """nMNIST dataset class"""
 
-    def __init__(self, sequence_len, worlds=None, digits=10, batch_size=32, idxs=None, train=False, sup=False,
-                 sup_digits=None, sup_digits_per_world=2, data_path=None):
+    def __init__(self, sequence_len, worlds=None, digits=10, batch_size=32, idxs=None, mode='train', sup=False,
+                 sup_digits=None, sup_samples_per_world=2, data_path=None):
+        """
+        @param sequence_len: number of digits in the sequence
+        @param worlds: digits pairs to consider
+        @param digits: digits values (e.g., digits = 3 means digits 0,1,2)
+        @param batch_size: number of images in a batch
+        @param idxs: list of image indexes for reproducibility
+        @param mode: string that specify the data to be loaded: training ('train'), validation ('val') or testing ('test') data
+        @param sup: whether to give direct supervision on digits
+        @param sup_digits: list of supervised digits for reproducibility
+        @param sup_samples_per_world: number of supervised samples per pair of digits
+        @param data_path: path to dataset
+        """
         self.n_digits = digits
-        self.sup_digits_x_world = sup_digits_per_world
-        self.images, self.labels = self.read_data(path=data_path, train=train)
+        self.mode = mode
+        self.sup_samples_per_world = sup_samples_per_world
+        self.images, self.labels = self.read_data(path=data_path)
         self.mean, self.std = self.images.mean(), self.images.std()
         if worlds:
             self.worlds = worlds
@@ -30,9 +43,10 @@ class nMNIST(Dataset):
         self.load_idxs(idxs)
         self.len = int(np.ceil(len(self.worlds) * self.samples_x_world / self.batch_size))
         self.world_counter = {c: self.samples_x_world // self.batch_size for c in self.worlds}
-        # Supervised mode: select n = sup_digits_per_world images for a full supervision
+        # Supervised mode
         if sup and not sup_digits:
-            self.sup_digits = {c: sample(self.idxs[c].ravel().tolist(), sup_digits_per_world) for c in self.worlds}
+            self.sup_digits = {c: sample(self.idxs[c].ravel().tolist(), self.sup_samples_per_world) for c in
+                               self.worlds}
             print("NEW supervised digits idx:", self.sup_digits)
         elif sup and sup_digits:
             self.sup_digits = sup_digits
@@ -42,47 +56,59 @@ class nMNIST(Dataset):
 
     def load_idxs(self, idxs):
         """
-        Load the list of image indexes for reproducibility
+        Load the list of image indexes for reproducibility and computes the samples per pair accordingly
+        @param idxs: list of image indexes for reproducibility
         """
         self.samples_x_world = idxs[self.worlds[0]].shape[0]
-        self.idxs = {k: v.reshape(self.batch_size, -1) for k, v in idxs.items()}
+        self.idxs = {k: v.reshape(-1, self.batch_size) for k, v in idxs.items()}
         self.n_samples = len(self.idxs) * self.samples_x_world
         print("Indexes loaded: total images {}, samples per world {}".format(self.n_samples, self.samples_x_world))
 
     def get_image(self, idx):
         """
-        Create the target sequence by randomly sampling the required digits from X.
-        Return the new image and its label in the form [digit1, ..., digitN, sum of digits]
+        Given the index, returns the corresponding image and its label. The label is in the form [digit1, ..., digitN, sum of digits]
+        @param idx: index of the desired image
+        @return: image and label as array
         """
 
         # Get image at index idx an image
         image = self.images[idx].astype(float)
         image = (image - self.mean) / self.std
-        # image = image / 255.
+
         label = self.labels[idx]
         label = np.concatenate((label, -1), axis=None)
 
         return np.array(image), np.array(label)
 
     def __len__(self):
+        """
+        @return: length of dataset in terms of number of batches
+        """
         return int(np.ceil(len(self.worlds) * self.samples_x_world / self.batch_size))
 
     def __getitem__(self, _):
+        """
+        @return: batch of images and labels
+        """
 
         images = []
         labels = []
+        # Remaining pairs of digits
         remaining_worlds = [c for c in self.worlds if self.world_counter[c] > 0]
         if remaining_worlds == []:
             raise "TODO: implement error for exhausted generator"
         else:
-            c = sample(remaining_worlds, 1)[0]  # Randomly sampling 1 sequence of digits
+            # Randomly sampling a pair c of digits from the remaining ones
+            c = sample(remaining_worlds, 1)[0]
             self.world_counter[c] -= 1
+            # Load the batch of images and labels corresponding to pair c
             for i, idx in enumerate(self.idxs[c][self.world_counter[c]]):
-                img, label = self.get_image(idx)  # Build the corresponding image and label
+                img, label = self.get_image(idx)
                 images.append(img)
                 labels.append(label)
 
-            # Replace an image with supervised digits in each batch
+            # If direct supervision on digits is required,
+            # replace one image in the current batch with a fully supervised image
             if self.sup_digits:
                 i = sample(range(len(images)), 1)[0]
                 sup_id = sample(self.sup_digits[c], 1)
@@ -94,9 +120,11 @@ class nMNIST(Dataset):
             images = np.array(images)
             return images.reshape(-1, 28, 56), np.array(labels).reshape(-1, 4)
 
-    def read_data(self, path, train=True):
+    def read_data(self, path):
         """
-        Returns images and labels
+        Returns images and labels stored in 'path'.
+        @param path: path where data are stored
+        @return: images and labels, if they exist.
         """
         try:
             print("Loading data...")
@@ -105,21 +133,27 @@ class nMNIST(Dataset):
         except:
             print("No dataset found.")
 
-        if train:
-            images = data['train']['images']
-            labels = data['train']['labels']
-        else:
-            images = data['test']['images']
-            labels = data['test']['labels']
+        images = data[self.mode]['images']
+        labels = data[self.mode]['labels']
 
         return images, labels
 
     def reset_counter(self):
+        """
+        Resets dataset counter.
+        """
         self.world_counter = {c: self.samples_x_world // self.batch_size for c in self.worlds}
         # self.world_counter = {c: self.samples_x_world for c in self.worlds}
 
 
 def create_sample(X, target_sequence, digit2idx):
+    """
+    Creates the required nMNIST sample.
+    @param X: MNIST data (images and labels)
+    @param target_sequence: sequence of digits to create
+    @param digit2idx: dictionary of MNIST digits and corresponding indexes in X
+    @return: nMNIST image and label as arrays, and the corresponding index
+    """
     idxs = [choice(digit2idx[digit][0]) for digit in target_sequence]
     imgs = [X[idx] for idx in idxs]
     new_image = np.concatenate(imgs, axis=1)
@@ -129,6 +163,15 @@ def create_sample(X, target_sequence, digit2idx):
 
 
 def create_dataset(n_digit=2, sequence_len=2, samples_x_world=100, train=True, download=False):
+    """
+    Creates the required nMNIST dataset.
+    @param n_digit: number of digits values to be consider (e.g., with digits = 3 we'll have only digits 0,1,2)
+    @param sequence_len: number of digits in a sequence
+    @param samples_x_world: number of samples per each sequence
+    @param train: whether to load MNIST train or test dataset
+    @param download: whether to download MNIST dataset
+    @return: nMNIST images and labels as arrays, and corresponding indexes as dictionary
+    """
     # Download data
     MNIST = datasets.MNIST(root='./data/raw/', train=train, download=download)
 
@@ -163,14 +206,20 @@ def create_dataset(n_digit=2, sequence_len=2, samples_x_world=100, train=True, d
 
 
 def check_dataset(n_digits, data_folder, data_file, dataset_dim):
-    """Checks whether the dataset exists, if not creates it."""
+    """Checks whether the dataset exists, if not it creates the required data.
+    @param n_digits: number of digits values to be consider (e.g., with digits = 3 we'll have only digits 0,1,2)
+    @param data_folder: dataset folder
+    @param data_file: dataset file name
+    @param dataset_dim: dictionary with desired number of samples for training ('train'), validation ('val') and testing
+     ('test') set. The dimensions will be redefined to ensure the same samples for each pair of digits
+    """
     Path(data_folder).mkdir(parents=True, exist_ok=True)
     data_path = os.path.join(data_folder, data_file)
     try:
         load(data_path)
     except:
-        print("No dataset found.")
-        # Define dataset dimension so to have teh same number of worlds
+        print("No dataset found -> building a new dataset")
+        # Define dataset dimension so to have the same number of worlds
         n_worlds = n_digits * n_digits
         samples_x_world = {k: int(d / n_worlds) for k, d in dataset_dim.items()}
         dataset_dim = {k: s * n_worlds for k, s in samples_x_world.items()}
