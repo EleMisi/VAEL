@@ -1,20 +1,22 @@
 # VAEL
 
-Codebase for [_VAEL: Bridging Variational Autoencoders and Probabilistic Logic Programming_](https://arxiv.org/abs/2202.04178).
+Codebase for [_VAEL: Bridging Variational Autoencoders and Probabilistic Logic Programming_](https://papers.nips.cc/paper_files/paper/2022/hash/1e38b2a0b77541b14a3315c99697b835-Abstract-Conference.html) published at NeurIPS 2022.
 
 If you use this codebase, please cite:
 
-    @misc{https://doi.org/10.48550/arxiv.2202.04178,
-      doi = {10.48550/ARXIV.2202.04178},
-      url = {https://arxiv.org/abs/2202.04178},
-      author = {Misino, Eleonora and Marra, Giuseppe and Sansone, Emanuele},
-      keywords = {Programming Languages (cs.PL), Machine Learning (cs.LG), FOS: Computer and information sciences, FOS: Computer and information sciences},
-      title = {VAEL: Bridging Variational Autoencoders and Probabilistic Logic Programming},
-      publisher = {arXiv},
-      year = {2022},
-      copyright = {arXiv.org perpetual, non-exclusive license}
-    }
-
+```
+@inproceedings{NEURIPS2022_1e38b2a0,
+ author = {Misino, Eleonora and Marra, Giuseppe and Sansone, Emanuele},
+ booktitle = {Advances in Neural Information Processing Systems},
+ editor = {S. Koyejo and S. Mohamed and A. Agarwal and D. Belgrave and K. Cho and A. Oh},
+ pages = {4667--4679},
+ publisher = {Curran Associates, Inc.},
+ title = {VAEL: Bridging Variational Autoencoders and Probabilistic Logic Programming},
+ url = {https://proceedings.neurips.cc/paper_files/paper/2022/file/1e38b2a0b77541b14a3315c99697b835-Paper-Conference.pdf},
+ volume = {35},
+ year = {2022}
+}
+```
 
 
 
