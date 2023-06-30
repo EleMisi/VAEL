@@ -56,7 +56,8 @@ In particular:
       * the model checkpoint
       * the learning curves 
       * some samples of image reconstruction and generation
-## Author
+        
+## Corresponding Author
 
 * [Eleonora Misino](https://github.com/EleMisi) - eleonora.misino2@unibo.it
 * [Giuseppe Marra](https://github.com/GiuseppeMarra) - giuseppe.marra@kuleuven.be
